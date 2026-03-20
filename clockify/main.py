@@ -16,7 +16,7 @@ client = ClockifyClient()
 
 
 @app.command()
-def log(date_arg: str = typer.Argument(None, help="today by default, -1, or 01/03/25")) -> None:
+def log(date_arg: str = typer.Option(None, "--date", "-d", help="today by default, -1, +1, or 01/03/25")) -> None:
     try:
         target_date = parse_date(date_arg)
     except ValueError as e:
