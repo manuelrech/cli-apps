@@ -1,5 +1,5 @@
 from calendar import month_name
-from datetime import datetime
+from datetime import date, datetime
 
 from rich.prompt import Prompt
 
@@ -8,6 +8,12 @@ from shared.ui import ColumnDef, console, make_table
 
 
 class UI:
+    def show_target_date(self, target_date: date) -> None:
+        console.print(
+            f"\n[bold]Logging for[/bold] "
+            f"[cyan]{target_date:%A, %d %B %Y}[/cyan]"
+        )
+
     def show_entries(self, entries: list[TimeEntry]) -> list[TimeEntry]:
         table = make_table("This month's entries", [
             ColumnDef(header="#", style="cyan", width=4),

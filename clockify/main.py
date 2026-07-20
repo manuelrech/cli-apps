@@ -23,6 +23,8 @@ def log(date_arg: str = typer.Option(None, "--date", "-d", help="today by defaul
         error(str(e))
         raise typer.Exit(1)
 
+    ui.show_target_date(target_date)
+
     user_id = client.get_user_id()
     entries = client.get_month_entries(user_id, target_date.year, target_date.month)
 
