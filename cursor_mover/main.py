@@ -11,7 +11,7 @@ STOP_AT_CORNER_TIME = 0.5
 SIDE_LENGTH = 200
 
 
-def _move_cursor() -> None:
+def _move_cursor(web_ping: bool) -> None:
     for move in [
         (SIDE_LENGTH, 0),
         (0, SIDE_LENGTH),
@@ -20,6 +20,8 @@ def _move_cursor() -> None:
     ]:
         pyautogui.moveRel(*move, duration=CURSOR_MOVE_DURATION)
         time.sleep(STOP_AT_CORNER_TIME)
+    if web_ping:
+        _ping_website()
 
 
 def _format_elapsed(elapsed: float) -> str:
@@ -72,14 +74,11 @@ def run(
     try:
         if timeout is not None:
             while time.time() - start_time < timeout:
-                _move_cursor()
-                if web_ping:
-                    _ping_website()
+                _move_cursor(web_ping)
         else:
             while True:
-                _move_cursor()
-                if web_ping:
-                    _ping_website()
+                _move_cursor(web_ping)
+
     except KeyboardInterrupt:
         elapsed = time.time() - start_time
         print(f"\nApp ran for {_format_elapsed(elapsed)}")
