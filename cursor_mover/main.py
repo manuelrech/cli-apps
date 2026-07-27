@@ -28,10 +28,41 @@ def _format_elapsed(elapsed: float) -> str:
     seconds = int(elapsed % 60)
     return f"{hours:02d}:{minutes:02d}:{seconds:02d}"
 
+def _ping_website() -> None:
+    import requests
+    import random
+
+    websites = [
+        "http://connectivitycheck.gstatic.com/generate_204",
+        "http://clients3.google.com/generate_204",
+        "http://www.gstatic.com/generate_204",
+        "http://cp.cloudflare.com/generate_204",
+        "http://connectivity-check.ubuntu.com/",
+        "http://network-test.debian.org/nm",
+        "http://nmcheck.gnome.org/check_network_status.txt",
+        "http://detectportal.firefox.com/success.txt",
+        "http://www.msftconnecttest.com/connecttest.txt",
+        "http://captive.apple.com/hotspot-detect.html",
+        "https://icanhazip.com",
+        "https://checkip.amazonaws.com",
+        "https://api.ipify.org",
+        "https://1.1.1.1/cdn-cgi/trace",
+        "https://example.com"
+    ]
+
+    try:
+        response = requests.get(random.choice(websites), timeout=5)
+        if response.status_code == 200:
+            pass
+        else:
+            print(f"Failed to ping website. Status code: {response.status_code}")
+    except requests.RequestException as e:
+        print(f"Error pinging website: {e}")
 
 @app.command()
 def run(
     timeout: Optional[int] = typer.Option(None, "--time", "-t", help="Time in seconds to run the script"),
+    web_ping: Optional[bool] = typer.Option(False, "--web-ping", "-w", help="Ping a website to keep the internet connection alive"),
 ) -> None:
     """Move the cursor in a square pattern."""
     print("Starting in 3 seconds...")
@@ -42,9 +73,13 @@ def run(
         if timeout is not None:
             while time.time() - start_time < timeout:
                 _move_cursor()
+                if web_ping:
+                    _ping_website()
         else:
             while True:
                 _move_cursor()
+                if web_ping:
+                    _ping_website()
     except KeyboardInterrupt:
         elapsed = time.time() - start_time
         print(f"\nApp ran for {_format_elapsed(elapsed)}")
