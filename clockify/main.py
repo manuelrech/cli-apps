@@ -48,6 +48,9 @@ def log(date_arg: str = typer.Option(None, "--date", "-d", help="today by defaul
     ))
     ui.success(target_date, description)
 
+    full_entries = client.get_month_entries_full(user_id, target_date.year, target_date.month)
+    ui.show_report(full_entries, target_date.year, target_date.month)
+
 
 @app.command()
 def show(
