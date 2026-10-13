@@ -1,4 +1,4 @@
-from calendar import month_name
+from calendar import month_name, monthrange
 from datetime import date, datetime
 
 from rich.prompt import Prompt
@@ -69,19 +69,29 @@ class UI:
             show_footer=True,
         )
 
-        total = 0.0
-        for e in sorted(entries, key=lambda x: x["timeInterval"]["start"]):
+        by_day: dict[int, list[tuple[datetime, dict]]] = {}
+        for e in entries:
             interval = e["timeInterval"]
             start = datetime.fromisoformat(interval["start"].replace("Z", "+00:00"))
-            end = datetime.fromisoformat(interval["end"].replace("Z", "+00:00")) if interval.get("end") else None
-            hours = round((end - start).total_seconds() / 3600, 1) if end else 0
-            total += hours
-            table.add_row(
-                start.strftime("%a %d"),
-                e.get("description", "—"),
-                e.get("projectName", "—"),
-                f"{hours}h",
-            )
+            by_day.setdefault(start.day, []).append((start, e))
+
+        total = 0.0
+        for day in range(1, monthrange(year, month)[1] + 1):
+            d = date(year, month, day)
+            if day not in by_day:
+                table.add_row(f"[dim]{d:%a %d}[/dim]", "[dim]—[/dim]", "", "")
+                continue
+            for start, e in sorted(by_day[day], key=lambda x: x[0]):
+                interval = e["timeInterval"]
+                end = datetime.fromisoformat(interval["end"].replace("Z", "+00:00")) if interval.get("end") else None
+                hours = round((end - start).total_seconds() / 3600, 1) if end else 0
+                total += hours
+                table.add_row(
+                    start.strftime("%a %d"),
+                    e.get("description", "—"),
+                    e.get("projectName", "—"),
+                    f"{hours}h",
+                )
 
         table.columns[3].footer = f"{round(total, 1)}h"
         console.print(table)

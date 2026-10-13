@@ -53,11 +53,12 @@ def _ping_website() -> None:
     ]
 
     try:
-        response = requests.get(random.choice(websites), timeout=5)
+        website = random.choice(websites)
+        response = requests.get(website, timeout=5)
         if response.status_code == 200:
             pass
         else:
-            print(f"Failed to ping website. Status code: {response.status_code}")
+            print(f"Failed to ping website {website} - Status code: {response.status_code}")
     except requests.RequestException as e:
         print(f"Error pinging website: {e}")
 
