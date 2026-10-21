@@ -1,14 +1,15 @@
 import webbrowser
-from datetime import date
+from datetime import date, datetime
 
 import typer
+import yfinance as yf
 from rich.prompt import Prompt
 
 from clockify.client import ClockifyClient
 from clockify.models import LogRequest
 from clockify.ui import UI
 from clockify.utils import parse_date
-from shared.ui import error
+from shared.ui import console, error
 
 app = typer.Typer()
 ui = UI()
@@ -64,6 +65,33 @@ def show(
     user_id = client.get_user_id()
     entries = client.get_month_entries_full(user_id, year, month)
     ui.show_report(entries, year, month)
+
+
+@app.command()
+def prospect(
+    rate: float = typer.Option(..., "--rate", "-r", envvar="CLOCKIFY_CHF_RATE", help="Hourly rate in CHF"),
+    fx: float = typer.Option(None, "--fx", help="CHF→EUR rate (default: live from Yahoo)"),
+    net: float = typer.Option(0.8, "--net", help="Share kept after taxes"),
+    days: int = typer.Option(0, "--days", "-d", help="Extra future days to add (8h each)"),
+) -> None:
+    """Estimate this month's earnings in EUR."""
+    today = date.today()
+    entries = client.get_month_entries_full(client.get_user_id(), today.year, today.month)
+    hours = sum(
+        (datetime.fromisoformat(e["timeInterval"]["end"]) - datetime.fromisoformat(e["timeInterval"]["start"]))
+        .total_seconds()
+        for e in entries
+        if e["timeInterval"].get("end")
+    ) / 3600 + days * 8
+    fx =fx or yf.Ticker("CHFEUR=X").fast_info.last_price
+
+    console.print(f"\n[bold]{hours:.1f}h[/bold] × {rate:g} CHF × {fx:.4f} EUR/CHF")
+    for label, chf, style in [
+        ("Gross:      ", hours * rate, "green"),
+        (f"Net (×{net:g}): ", hours * rate * net, "green"),
+        ("Net × 11/12:", hours * rate * net * 11 / 12, "bold green"),
+    ]:
+        console.print(f"{label}  [{style}]€{chf * fx:>10,.2f}[/{style}]   [dim]CHF {chf:>10,.2f}[/dim]")
 
 
 @app.command()
