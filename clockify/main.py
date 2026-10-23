@@ -1,6 +1,9 @@
+import functools
 import webbrowser
+from collections.abc import Callable
 from datetime import date, datetime
 
+import httpx
 import typer
 import yfinance as yf
 from rich.prompt import Prompt
@@ -16,7 +19,23 @@ ui = UI()
 client = ClockifyClient()
 
 
+def handle_http_errors(fn: Callable[..., None]) -> Callable[..., None]:
+    @functools.wraps(fn)
+    def wrapper(*args, **kwargs) -> None:
+        try:
+            fn(*args, **kwargs)
+        except httpx.HTTPStatusError as e:
+            status = e.response.status_code
+            error("Clockify rate limit hit, try again in a minute" if status == 429 else f"Clockify API error: {status}")
+            raise typer.Exit(1)
+        except httpx.RequestError as e:
+            error(f"Could not reach Clockify: {e}")
+            raise typer.Exit(1)
+    return wrapper
+
+
 @app.command()
+@handle_http_errors
 def log(date_arg: str = typer.Option(None, "--date", "-d", help="today by default, -1, +1, or 01/03/25")) -> None:
     try:
         target_date = parse_date(date_arg)
@@ -54,6 +73,7 @@ def log(date_arg: str = typer.Option(None, "--date", "-d", help="today by defaul
 
 
 @app.command()
+@handle_http_errors
 def show(
     month: int = typer.Option(None, "--month", "-m", help="Month number (default: current)"),
     year: int = typer.Option(None, "--year", "-y", help="Year (default: current)"),
@@ -68,6 +88,7 @@ def show(
 
 
 @app.command()
+@handle_http_errors
 def prospect(
     rate: float = typer.Option(..., "--rate", "-r", envvar="CLOCKIFY_CHF_RATE", help="Hourly rate in CHF"),
     fx: float = typer.Option(None, "--fx", help="CHF→EUR rate (default: live from Yahoo)"),
@@ -83,7 +104,7 @@ def prospect(
         for e in entries
         if e["timeInterval"].get("end")
     ) / 3600 + days * 8
-    fx =fx or yf.Ticker("CHFEUR=X").fast_info.last_price
+    fx = fx or yf.Ticker("CHFEUR=X").fast_info.last_price
 
     console.print(f"\n[bold]{hours:.1f}h[/bold] × {rate:g} CHF × {fx:.4f} EUR/CHF")
     for label, chf, style in [

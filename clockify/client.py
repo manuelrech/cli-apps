@@ -1,3 +1,5 @@
+import time
+from collections.abc import Callable
 from datetime import date, datetime, timezone
 
 import httpx
@@ -6,38 +8,55 @@ from clockify.config import BASE_URL, HEADERS, WORKSPACE_ID
 from clockify.models import LogRequest, Project, TimeEntry
 
 
+RETRY_STATUSES = {429, 503}
+MAX_ATTEMPTS = 4
+MAX_BACKOFF = 8.0
+
+
 class ClockifyClient:
-    def __init__(self) -> None:
-        self.base = BASE_URL
-        self.headers = HEADERS
+    def __init__(
+        self,
+        transport: httpx.BaseTransport | None = None,
+        sleep: Callable[[float], None] = time.sleep,
+    ) -> None:
         self.workspace = WORKSPACE_ID
+        self.http = httpx.Client(base_url=BASE_URL, headers=HEADERS, transport=transport)
+        self.sleep = sleep
+        self._user_id: str | None = None
+        self._projects: list[Project] | None = None
+
+    def _request(self, method: str, path: str, **kw) -> httpx.Response:
+        for attempt in range(MAX_ATTEMPTS):
+            r = self.http.request(method, path, **kw)
+            if r.status_code not in RETRY_STATUSES or attempt == MAX_ATTEMPTS - 1:
+                break
+            retry_after = r.headers.get("Retry-After", "")
+            self.sleep(float(retry_after) if retry_after.isdigit() else min(2.0**attempt, MAX_BACKOFF))
+        r.raise_for_status()
+        return r
 
     def get_user_id(self) -> str:
-        r = httpx.get(f"{self.base}/user", headers=self.headers)
-        r.raise_for_status()
-        return r.json()["id"]
+        if self._user_id is None:
+            self._user_id = self._request("GET", "/user").json()["id"]
+        return self._user_id
 
     def get_projects(self) -> list[Project]:
-        r = httpx.get(
-            f"{self.base}/workspaces/{self.workspace}/projects",
-            headers=self.headers,
-            params={"page-size": 50},
-        )
-        r.raise_for_status()
-        return [Project(id=p["id"], name=p["name"]) for p in r.json()]
+        if self._projects is None:
+            r = self._request("GET", f"/workspaces/{self.workspace}/projects", params={"page-size": 50})
+            self._projects = [Project(id=p["id"], name=p["name"]) for p in r.json()]
+        return self._projects
 
     def _fetch_month_entries_raw(self, user_id: str, year: int, month: int) -> list[dict]:
         next_month = date(year + (month // 12), (month % 12) + 1, 1)
-        r = httpx.get(
-            f"{self.base}/workspaces/{self.workspace}/user/{user_id}/time-entries",
-            headers=self.headers,
+        r = self._request(
+            "GET",
+            f"/workspaces/{self.workspace}/user/{user_id}/time-entries",
             params={
                 "start": f"{year}-{month:02d}-01T00:00:00Z",
                 "end": f"{next_month.isoformat()}T00:00:00Z",
                 "page-size": 200,
             },
         )
-        r.raise_for_status()
         return r.json()
 
     def _build_project_map(self) -> dict[str, str]:
@@ -69,9 +88,9 @@ class ClockifyClient:
         start = datetime(d.year, d.month, d.day, 9, 0, 0, tzinfo=timezone.utc)
         end = datetime(d.year, d.month, d.day, 17, 0, 0, tzinfo=timezone.utc)
 
-        r = httpx.post(
-            f"{self.base}/workspaces/{self.workspace}/time-entries",
-            headers=self.headers,
+        self._request(
+            "POST",
+            f"/workspaces/{self.workspace}/time-entries",
             json={
                 "start": start.isoformat(),
                 "end": end.isoformat(),
@@ -79,4 +98,3 @@ class ClockifyClient:
                 "projectId": request.project_id,
             },
         )
-        r.raise_for_status()
