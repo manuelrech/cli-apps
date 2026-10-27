@@ -11,7 +11,7 @@ from rich.prompt import Prompt
 from clockify.client import ClockifyClient
 from clockify.models import LogRequest
 from clockify.ui import UI
-from clockify.utils import parse_date
+from clockify.utils import parse_date, summarize_by_task
 from shared.ui import console, error
 
 app = typer.Typer()
@@ -85,6 +85,21 @@ def show(
     user_id = client.get_user_id()
     entries = client.get_month_entries_full(user_id, year, month)
     ui.show_report(entries, year, month)
+
+
+@app.command()
+@handle_http_errors
+def report(
+    month: int = typer.Option(None, "--month", "-m", help="Month number (default: current)"),
+    year: int = typer.Option(None, "--year", "-y", help="Year (default: current)"),
+) -> None:
+    """Show hours worked per task for a month."""
+    today = date.today()
+    month = month or today.month
+    year = year or today.year
+
+    entries = client.get_month_entries_full(client.get_user_id(), year, month)
+    ui.show_task_report(summarize_by_task(entries), year, month)
 
 
 @app.command()

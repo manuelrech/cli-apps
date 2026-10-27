@@ -14,6 +14,13 @@ class TimeEntry(BaseModel):
     project_name: str
 
 
+class TaskSummary(BaseModel):
+    description: str
+    project_name: str
+    hours: float
+    entries: int
+
+
 class LogRequest(BaseModel):
     target_date: date
     description: str

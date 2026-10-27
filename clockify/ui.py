@@ -3,7 +3,7 @@ from datetime import date, datetime
 
 from rich.prompt import Prompt
 
-from clockify.models import Project, TimeEntry
+from clockify.models import Project, TaskSummary, TimeEntry
 from shared.ui import ColumnDef, console, make_table
 
 
@@ -96,3 +96,31 @@ class UI:
         table.columns[3].footer = f"{round(total, 1)}h"
         console.print(table)
         console.print(f"\n[bold]Total: {round(total, 1)}h[/bold] across {len(entries)} entries")
+
+    def show_task_report(self, tasks: list[TaskSummary], year: int, month: int) -> None:
+        table = make_table(
+            f"[bold]{month_name[month]} {year} by task[/bold]",
+            [
+                ColumnDef(header="Task"),
+                ColumnDef(header="Project", style="dim"),
+                ColumnDef(header="Entries", justify="right"),
+                ColumnDef(header="Hours", style="green", justify="right", footer_style="bold green"),
+                ColumnDef(header="%", style="cyan", justify="right"),
+            ],
+            show_footer=True,
+        )
+
+        total = sum(t.hours for t in tasks)
+        for t in tasks:
+            table.add_row(
+                t.description,
+                t.project_name,
+                str(t.entries),
+                f"{round(t.hours, 1)}h",
+                f"{t.hours / total * 100:.0f}%" if total else "—",
+            )
+
+        table.columns[2].footer = str(sum(t.entries for t in tasks))
+        table.columns[3].footer = f"{round(total, 1)}h"
+        console.print(table)
+        console.print(f"\n[bold]Total: {round(total, 1)}h[/bold] across {len(tasks)} tasks")
