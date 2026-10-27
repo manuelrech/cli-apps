@@ -18,7 +18,6 @@ class TaskSummary(BaseModel):
     description: str
     project_name: str
     hours: float
-    entries: int
 
 
 class LogRequest(BaseModel):

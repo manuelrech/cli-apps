@@ -103,9 +103,7 @@ class UI:
             [
                 ColumnDef(header="Task"),
                 ColumnDef(header="Project", style="dim"),
-                ColumnDef(header="Entries", justify="right"),
                 ColumnDef(header="Hours", style="green", justify="right", footer_style="bold green"),
-                ColumnDef(header="%", style="cyan", justify="right"),
             ],
             show_footer=True,
         )
@@ -115,12 +113,9 @@ class UI:
             table.add_row(
                 t.description,
                 t.project_name,
-                str(t.entries),
                 f"{round(t.hours, 1)}h",
-                f"{t.hours / total * 100:.0f}%" if total else "—",
             )
 
-        table.columns[2].footer = str(sum(t.entries for t in tasks))
-        table.columns[3].footer = f"{round(total, 1)}h"
+        table.columns[2].footer = f"{round(total, 1)}h"
         console.print(table)
         console.print(f"\n[bold]Total: {round(total, 1)}h[/bold] across {len(tasks)} tasks")

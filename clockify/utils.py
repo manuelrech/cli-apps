@@ -33,7 +33,6 @@ def summarize_by_task(entries: list[dict]) -> list[TaskSummary]:
         start = datetime.fromisoformat(interval["start"].replace("Z", "+00:00"))
         end = datetime.fromisoformat(interval["end"].replace("Z", "+00:00"))
         key = (e.get("description") or "—", e.get("projectName", "—"))
-        task = by_task.setdefault(key, TaskSummary(description=key[0], project_name=key[1], hours=0, entries=0))
+        task = by_task.setdefault(key, TaskSummary(description=key[0], project_name=key[1], hours=0))
         task.hours += (end - start).total_seconds() / 3600
-        task.entries += 1
     return sorted(by_task.values(), key=lambda t: t.hours, reverse=True)

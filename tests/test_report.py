@@ -21,10 +21,10 @@ def test_groups_by_description_and_project_and_sums_hours():
         entry("dev", "B", "2025-03-05T09:00:00Z", "2025-03-05T10:00:00Z"),
         entry("call", "A", "2025-03-05T14:00:00Z", "2025-03-05T23:00:00Z"),
     ])
-    assert [(t.description, t.project_name, t.hours, t.entries) for t in tasks] == [
-        ("dev", "A", 12.5, 2),
-        ("call", "A", 9.0, 1),
-        ("dev", "B", 1.0, 1),
+    assert [(t.description, t.project_name, t.hours) for t in tasks] == [
+        ("dev", "A", 12.5),
+        ("call", "A", 9.0),
+        ("dev", "B", 1.0),
     ]
 
 
@@ -33,7 +33,7 @@ def test_running_entries_are_skipped():
         entry("dev", "A", "2025-03-03T09:00:00Z", "2025-03-03T10:00:00Z"),
         entry("dev", "A", "2025-03-04T09:00:00Z", None),
     ])
-    assert len(tasks) == 1 and tasks[0].hours == 1.0 and tasks[0].entries == 1
+    assert len(tasks) == 1 and tasks[0].hours == 1.0
 
 
 def test_empty_description_grouped_as_dash():
@@ -63,5 +63,5 @@ def test_cli_report_shows_tasks_and_total(monkeypatch):
     assert "dev" in result.output and "review" in result.output
     assert "10.0h" in result.output and "5.0h" in result.output
     assert "Total: 15.0h" in result.output
-    assert "67%" in result.output
+    assert "%" not in result.output and "Entries" not in result.output
     assert result.output.index("dev") < result.output.index("review")
